@@ -1,8 +1,11 @@
-./bin
-./data
-./log
-./.vscode
+bin/
 
-./repo.cc
-./correctness.exe
-./persistence.exe
+data/
+
+log/
+
+.vscode
+
+repo.cc
+correctness.exe
+persistence.exe
