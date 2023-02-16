@@ -10,7 +10,7 @@
 #include <fstream>
 
 #include "const.h"
-#include "skiplist.cc"
+#include "skiplist.h"
 #include "MurmurHash3.h"
 
 

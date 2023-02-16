@@ -6,7 +6,6 @@
 #include <list>
 #include <algorithm>
 #include "ssTable.h"
-// #include "const.h"
 #include "MurmurHash3.h"
 
 

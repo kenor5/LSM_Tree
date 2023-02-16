@@ -1,4 +1,4 @@
-#include "kvstore.h"
+#include "./include/kvstore.h"
 #include <iostream>
 #include <algorithm>
 #include <string>
@@ -25,6 +25,7 @@ void KVStore::init() {
 		utils::scanDir(dirName, files);
 		sort(files.begin(), files.end()); // 排序完成就是按照时间戳小到大
 		
+		// load cache
 		for (auto it = files.begin(); it != files.end(); ++it) {
 			fileName = dirName + "/" + (*it);
 			fin.open(fileName, ios::in);
@@ -62,6 +63,25 @@ void KVStore::init() {
 		}
 
 	}
+
+	fin.open("./data/log/wal.log", ios::in);
+	// 存在wal文件
+	if (fin.is_open()) {
+		int size;
+		uint64_t key;
+		char buf[100*KB];
+		string str;
+		while (fin.peek() != EOF) {
+			fin.read((char*)&key, sizeof(key));
+			fin.read((char*)&size, sizeof(size));
+			memset(buf, '\0', sizeof(buf));
+			fin.read((char *)buf, size);
+			str = string(buf, buf+strlen(buf));
+			this->put(key, str);
+		}
+		fin.close();
+		clearWal();
+	}
 }
 
 KVStore::~KVStore()
@@ -80,6 +100,7 @@ KVStore::~KVStore()
 		compaction();
 
 		memTable->clear();
+		clearWal();
 	}
 
 	delete memTable;
@@ -93,8 +114,10 @@ KVStore::~KVStore()
 void KVStore::put(uint64_t key, const std::string &s)
 {
 	// not oversized after insertion
-	if (memTable->getSize() + 12 + s.length() < 2*MB)
+	if (memTable->getSize() + 12 + s.length() < 2*MB){
+		writeToWal(key, s);
 		memTable->insert(key, s);
+	}
 	else {
 		// Node<uint64_t, std::string> *tmp = memTable->search(key);
 		// if (tmp != nullptr && memTable->getSize() - tmp->getValue().length() + s.length() < 2*MB) {
@@ -115,10 +138,37 @@ void KVStore::put(uint64_t key, const std::string &s)
 		compaction();
 
 		memTable->clear();
+		clearWal();
 		memTable->insert(key, s);
+		writeToWal(key, s);
 	}
 
 
+}
+
+void KVStore::writeToWal(uint64_t key, const std::string& s) {
+	std::string logFolder = "./log";
+	if (!utils::dirExists(logFolder)) {
+		std::cerr << "not exit wal";
+			std::cerr << utils::mkdir(logFolder.c_str());
+
+		}
+	
+	std::string walName = logFolder + "/wal.log";
+	std::ofstream fout(walName,std::ios::out | std::ios::app | std::ios::binary);
+	if (!fout.is_open() ) std::cerr << "fail to open wal file \n";
+	else {
+		int size = s.size();
+		fout.write((char*)&key, sizeof(key));
+		fout.write((char*)&size, sizeof(size));
+		fout.write(s.c_str(), size);
+		fout.close();
+	}
+}
+
+void KVStore::clearWal() {
+	char walName[] = "./log/wal.log";
+	utils::rmfile(walName);
 }
 
 
@@ -193,6 +243,7 @@ bool KVStore::del(uint64_t key)
  */
 void KVStore::reset()
 {
+	clearWal();
 	memTable->clear();
 
 	vector<string> fileName;
@@ -233,6 +284,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 
 	for (int i = 0; i <= curLayer; ++i) {
 		for (auto it = caches[i].cacheList.begin(); it != caches[i].cacheList.end(); it++) {
+			if (it->minKey > key1 && it->maxKey < key2) continue;
 			fileName = getFileName(i, (*it).th);
 
 			std::list<std::pair<uint64_t, std::string>> curList = scanSstable(fileName, key1, key2);

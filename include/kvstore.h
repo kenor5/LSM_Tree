@@ -2,12 +2,10 @@
 #define	_KVSTORE_H_
 
 #include "kvstore_api.h"
-// #include "skiplist.cc"
-// #include "skiplist.h"
-#include "ssTable.cc"
-// #include "ssTable.h"
+#include "skiplist.h"
+#include "ssTable.h"
 #include "utils.h"
-#include "cache.cc"
+#include "cache.h"
 
 
 class keyValTime{
@@ -29,6 +27,7 @@ private:
 	SkipList<uint64_t, std::string> *mergeTable; //skiplist used to merge
 	uint64_t curTime;
 	cache caches[maxLayer];
+	std::string dataFolder = "./data";
 
 	std::string getFileName(int layer, int num);
 
@@ -41,6 +40,10 @@ private:
 	void mergeFirstLayer();
 
 	void mergeOtherLayer(int);
+
+	void writeToWal(uint64_t, const std::string&);
+
+	void clearWal();
 
 	std::string readSstable(std::string, uint32_t);
 

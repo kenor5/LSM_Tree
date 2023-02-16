@@ -1,4 +1,4 @@
-#include "ssTable.h"
+#include "./include/ssTable.h"
 #include <iostream>
 
 ssTable::ssTable(SkipList<uint64_t, std::string> &li)
